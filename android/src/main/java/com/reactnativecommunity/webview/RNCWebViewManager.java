@@ -78,7 +78,7 @@ import com.reactnativecommunity.webview.events.TopLoadingStartEvent;
 import com.reactnativecommunity.webview.events.TopMessageEvent;
 import com.reactnativecommunity.webview.events.TopShouldStartLoadWithRequestEvent;
 import com.reactnativecommunity.webview.events.TopRenderProcessGoneEvent;
-
+import java.lang.IllegalArgumentException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -205,7 +205,7 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         webView.setIgnoreErrFailedForThisURL(url);
 
         RNCWebViewModule module = getModule(reactContext);
-
+        try {
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
 
         String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
@@ -236,6 +236,9 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
         if (module.grantFileDownloaderPermissions()) {
           module.downloadFile();
         }
+       } catch (IllegalArgumentException e) {
+        System.out.println("IllegalArgumentException: " + e.toString());
+      }	
       }
     });
 
