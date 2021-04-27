@@ -3,7 +3,9 @@ package com.reactnativecommunity.webview;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.DownloadManager;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -16,6 +18,7 @@ import android.os.Environment;
 import android.os.Message;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -78,6 +81,12 @@ import com.reactnativecommunity.webview.events.TopLoadingStartEvent;
 import com.reactnativecommunity.webview.events.TopMessageEvent;
 import com.reactnativecommunity.webview.events.TopShouldStartLoadWithRequestEvent;
 import com.reactnativecommunity.webview.events.TopRenderProcessGoneEvent;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.IllegalArgumentException;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -200,8 +209,16 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       WebView.setWebContentsDebuggingEnabled(true);
     }
 
+
+
     webView.setDownloadListener(new DownloadListener() {
       public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+        if(url.startsWith("data:application/octet-stream"))
+        {
+          saveImage(reactContext, url);
+          return;
+        }
+
         webView.setIgnoreErrFailedForThisURL(url);
 
         RNCWebViewModule module = getModule(reactContext);
@@ -244,6 +261,62 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
     return webView;
   }
+
+  File saveImage(final Context context,  String imageData) {
+    File file= null;
+    try {
+      imageData= imageData.replace("data:application/octet-stream;base64,","");
+
+
+      final byte[] imgBytesData = android.util.Base64.decode(imageData,
+        android.util.Base64.DEFAULT);
+
+      file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"ISOFHCARE-DOWNLOAD-IMAGE.png");
+      if(file.exists())
+      {
+        file.delete();
+      }
+
+//      file = File.createTempFile("image", null, context.get(Environment.DIRECTORY_DOWNLOADS));
+      final FileOutputStream fileOutputStream;
+      try {
+        fileOutputStream = new FileOutputStream(file);
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+        return null;
+      }
+
+      final BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(
+        fileOutputStream);
+      try {
+        bufferedOutputStream.write(imgBytesData);
+      } catch (IOException e) {
+        e.printStackTrace();
+        return null;
+      } finally {
+        try {
+          bufferedOutputStream.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+      if (file.exists()) {
+        Intent intent = new Intent();
+        intent.setAction(android.content.Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.fromFile(file), "image/*");
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        try {
+          context.startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+        }
+      }
+    }catch (Exception e)
+    {
+
+    }
+    return file;
+  }
+
 
   @ReactProp(name = "javaScriptEnabled")
   public void setJavaScriptEnabled(WebView view, boolean enabled) {
